@@ -1,5 +1,4 @@
 import random
-from math import floor
 from collections import defaultdict
 
 from core.garden import Garden
