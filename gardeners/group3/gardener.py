@@ -28,8 +28,11 @@ class Gardener3(Gardener):
     # Behavior flags
     PREVENT_INTERACTIONS = False
 
-    # Minimum varieties count to restrict garden size for hexagonal placement
-    MIN_TOTAL_VARIETIES_COUNT = 24
+    # Minimum count of each variety to restrict garden size for hexagonal placement
+    # 30 because 3 varieties * 30 each = 90 plants total, which fits in the half the garden when using hexagonal placement
+    # This is because in hexagonal placement, we can fit 17 plants in even rows and 16 in odd rows for 16x10 garden
+    # Therefore in total we can fit 17*6 + 16*5 = 182 plants in full garden -> 91 plants in half garden
+    MIN_VARIETIES_FOR_GARDEN_SIZE = 30
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
@@ -117,8 +120,10 @@ class Gardener3(Gardener):
         """Generate placements in a hexagonal grid pattern."""
         placements = []
 
-        if len(self.varieties) <= self.MIN_TOTAL_VARIETIES_COUNT:
-            garden_width, garden_height = self.garden.width // 2, self.garden.height // 2
+        if len(self.varieties) // 3 <= self.MIN_VARIETIES_FOR_GARDEN_SIZE:
+            print('Using reduced garden size for hexagonal placement')
+            garden_width = self.garden.width // 2
+            garden_height = self.garden.height
         else:
             garden_width, garden_height = self.garden.width, self.garden.height
         garden_internal = Garden(garden_width, garden_height)
