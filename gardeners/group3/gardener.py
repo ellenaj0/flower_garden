@@ -50,9 +50,9 @@ class Gardener3(Gardener):
     def cultivate_garden(self, prevent_interactions: bool = True) -> None:
         # Try hexagonal placements with random fallback
         # If three unique varieties, with all same radius and same count
-        if self._check_hexagonal_condition():
+        if True: #self._check_hexagonal_condition():
             try:
-                placements = self._get_hexagonal_placements()
+                placements =  self._get_basic_hexagonal_placements() # self._get_advanced_hexagonal_placements()
             except Exception as e:
                 print(
                     f'Hexagonal placement failed with error: {e}.\nFalling back to random placements.'
@@ -116,12 +116,11 @@ class Gardener3(Gardener):
 
     ### Hexagonal Placement Methods ###
 
-    def _get_hexagonal_placements(self) -> list:
-        """Generate placements in a hexagonal grid pattern."""
-        placements = []
+    def _get_basic_hexagonal_placements(self) -> list:
+        """Generate placements in a hexagonal grid pattern, assuming we have one variety per species and all varieties have the same radius and count."""
+        placements: list[tuple[PlantVariety, Position]] = []
 
         if len(self.varieties) // 3 <= self.MIN_VARIETIES_FOR_GARDEN_SIZE:
-            print('Using reduced garden size for hexagonal placement')
             garden_width = self.garden.width // 2
             garden_height = self.garden.height
         else:
@@ -129,43 +128,46 @@ class Gardener3(Gardener):
         garden_internal = Garden(garden_width, garden_height)
 
         n_species = len(self.species)
-        offsets = [0.0, 0.5]
-        step_size = 1
+
+        radius = self.varieties[0].radius
+        offsets = [0.0, float(radius) / 2.0]
+        step_size = float(radius)
+
         variety_indices = {s: 0 for s in self.species}
 
-        # which species to try next for each row
+        # which species to try next for each row (use row index as key since we use float stepping)
         current_species_by_row = defaultdict(int)
 
-        for y in range(0, self.height + 1, step_size):
-            offset = offsets[y % 2]
+        row_idx = 0
+        for y in self._frange(0.0, self.height + 0.1, step_size):
+            offset = offsets[row_idx % 2]
 
             for x in self._frange(offset, self.width + 0.1, step_size):
                 position = Position(x, y)
 
-                current_species_idx = current_species_by_row[y]
+                current_species_idx = current_species_by_row[row_idx]
                 species_index = (
-                    (current_species_idx + 2) % n_species
-                    if y % 2 == 1
-                    else current_species_idx % n_species
+                    (current_species_idx + 2) % n_species if row_idx % 2 == 1 else current_species_idx % n_species
                 )
                 species_name = self.species[species_index]
 
                 # skip if we've exhausted varieties for this species
                 if variety_indices[species_name] >= len(self.species_varieties[species_name]):
                     # advance the index because there's nothing left for this species
-                    current_species_by_row[y] = current_species_idx + 1
+                    current_species_by_row[row_idx] = current_species_idx + 1
                     continue
 
                 variety = self.species_varieties[species_name][variety_indices[species_name]]
 
                 if garden_internal.can_place_plant(variety, position):
-                    # print(f"Placing {variety.name} at {position}")
                     placements.append((variety, position))
                     garden_internal.add_plant(variety, position)
                     variety_indices[species_name] += 1
 
                     # advance the index for this row only on successful placement
-                    current_species_by_row[y] = current_species_idx + 1
+                    current_species_by_row[row_idx] = current_species_idx + 1
+
+            row_idx += 1
 
         return placements
 
