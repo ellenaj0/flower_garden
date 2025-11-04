@@ -32,7 +32,8 @@ class Gardener3(Gardener):
     # 30 because 3 varieties * 30 each = 90 plants total, which fits in the half the garden when using hexagonal placement
     # This is because in hexagonal placement, we can fit 17 plants in even rows and 16 in odd rows for 16x10 garden
     # Therefore in total we can fit 17*6 + 16*5 = 182 plants in full garden -> 91 plants in half garden
-    MIN_VARIETIES_FOR_GARDEN_SIZE = 30
+    # MIN_VARIETIES_FOR_GARDEN_SIZE = 30
+    COUNT_PER_VARIETY_FOR_HEX_PLACEMENT = 8
 
     def __init__(self, garden: Garden, varieties: list[PlantVariety]):
         super().__init__(garden, varieties)
@@ -45,14 +46,14 @@ class Gardener3(Gardener):
             name: [v.name for v in varieties].count(name) for name in set(v.name for v in varieties)
         }
         # print(self.species_varieties)
-        # print(self.variety_counts)
+        print(self.variety_counts)
 
     def cultivate_garden(self, prevent_interactions: bool = True) -> None:
         # Try hexagonal placements with random fallback
         # If three unique varieties, with all same radius and same count
-        if True: #self._check_hexagonal_condition():
+        if self._check_hexagonal_condition():
             try:
-                placements =  self._get_basic_hexagonal_placements() # self._get_advanced_hexagonal_placements()
+                placements =  self._get_basic_hexagonal_placements() 
             except Exception as e:
                 print(
                     f'Hexagonal placement failed with error: {e}.\nFalling back to random placements.'
@@ -112,7 +113,10 @@ class Gardener3(Gardener):
             variety.radius == list(self.species_varieties.values())[0][0].radius
             for variety in self.varieties
         )
-        return exactly_three_varieties and equal_counts and equal_radii
+        enough_count = all(
+            count >= self.COUNT_PER_VARIETY_FOR_HEX_PLACEMENT for count in self.variety_counts.values()
+        )
+        return exactly_three_varieties and equal_counts and enough_count and equal_radii 
 
     ### Hexagonal Placement Methods ###
 
@@ -120,7 +124,22 @@ class Gardener3(Gardener):
         """Generate placements in a hexagonal grid pattern, assuming we have one variety per species and all varieties have the same radius and count."""
         placements: list[tuple[PlantVariety, Position]] = []
 
-        if len(self.varieties) // 3 <= self.MIN_VARIETIES_FOR_GARDEN_SIZE:
+        radius = self.varieties[0].radius
+
+        # Compute how many plants can fit in a hexagonal grid
+        even_row_plants = self.width // radius + 1
+        odd_row_plants = self.width // radius
+
+        even_row_count = (self.height + 1) // (radius * 2) + 1
+        odd_row_count = (self.height - radius + 1) // (radius * 2) + 1 if radius > 1 else (self.height - radius + 1) // (radius * 2)
+
+        total_plants = even_row_plants * even_row_count + odd_row_plants * odd_row_count
+        half_plants = total_plants // 2
+        print(f'Hexagonal grid can fit up to {total_plants} plants. half: {half_plants}')
+
+        # Use half the garden if we have limited varieties
+        min_count_per_species_for_garden_reduction = half_plants // 3
+        if len(self.varieties) // 3 <= min_count_per_species_for_garden_reduction:
             garden_width = self.garden.width // 2
             garden_height = self.garden.height
         else:
@@ -129,7 +148,7 @@ class Gardener3(Gardener):
 
         n_species = len(self.species)
 
-        radius = self.varieties[0].radius
+        
         offsets = [0.0, float(radius) / 2.0]
         step_size = float(radius)
 
